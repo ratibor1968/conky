@@ -59,6 +59,13 @@ detection.
 Add `~/.conky/conky_start.sh` to your autostart entries (KDE: *System Settings →
 Autostart*).
 
+> **KDE users — important:** also exclude the panels from session restoration,
+> otherwise Plasma relaunches its own copies at login in addition to this
+> autostart entry, doubling the panels on every login. In *System Settings →
+> Session → Desktop Session → Applications to be excluded from session
+> restoration* add `conky` (equivalently: `excludeApps=conky,ConkySystem,ConkyNet`
+> under `[General]` in `~/.config/ksmserverrc`).
+
 ## Layout
 
 ```
