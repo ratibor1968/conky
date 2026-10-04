@@ -6,7 +6,7 @@ desktop, styled with the Catppuccin Mocha palette.
 | Panel | Position | Config |
 |-------|----------|--------|
 | System | top-right | `conky.conf` |
-| Network | top-left | `conky_network.conf` (template) |
+| Network | top-left | `conky_network.conf` |
 
 ## Features
 
@@ -22,12 +22,18 @@ desktop, styled with the Catppuccin Mocha palette.
   right-aligned so the `%` stays next to the bar.
 - GPU (NVIDIA or AMD) usage, temperature, power draw and a usage graph, plus
   VRAM usage.
-- Memory, swap, root filesystem and a top-process list aggregated by name.
+- Memory, swap, root filesystem and a top-process list aggregated by name,
+  with a GPU marker for processes currently holding the GPU.
 
 **Network panel**
-- Interface, address and gateway.
-- Live up/down graphs, transfer totals and established-connection peers
-  grouped by remote host.
+- The **active interface is detected at runtime** (default-route device), so
+  switching between wired and Wi-Fi is followed live — no restart.
+- Link block with interface type, address and gateway; Wi-Fi adds the SSID and
+  signal strength.
+- Live up/down graphs and transfer totals for the active link. Speeds are
+  labelled with explicit per-second units (e.g. `12.3 MiB/s`).
+- Established-connection peers grouped by **reverse-DNS hostname** (cached and
+  resolved with a short timeout, so the panel never blocks).
 
 ## Requirements
 
@@ -49,10 +55,10 @@ sudo pacman -S conky lm_sensors otf-font-awesome ttf-fira-sans noto-fonts nvidia
 ./conky_start.sh
 ```
 
-The script detects the primary network interface, renders
-`conky_network.conf` into `run/conky_network.conf`, and (re)starts both panels.
-It is safe to run repeatedly. Set `CONKY_IFACE` to override interface
-detection.
+The script (re)starts both panels and is safe to run repeatedly. The network
+panel detects the active interface at runtime, so nothing is rendered per
+login. Set `CONKY_IFACE` to override interface detection (it is exported to
+the panels).
 
 ### Autostart
 
@@ -70,10 +76,10 @@ Autostart*).
 
 ```
 conky.conf            system panel
-conky_network.conf    network panel template (@IFACE@ placeholder)
-conky_start.sh        start both panels, render the network template
+conky_network.conf    network panel
+conky_start.sh        start both panels
 bin/                  helper scripts called from the configs
-run/                  generated files (git-ignored)
+run/                  runtime lock file (git-ignored)
 ```
 
 ## Notes

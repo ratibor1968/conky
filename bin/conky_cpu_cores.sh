@@ -9,12 +9,14 @@
 # Set CONKY_CPU_LIST (e.g. "0-5") to override detection for testing.
 set -u
 
-CONTENT=308          # usable content width (maximum_width - 2*border_inner_margin)
+CONTENT=240          # usable content width (= window width, so the CPU grid/bars line up with the panel's alignr edge)
 X0=16                # border_inner_margin: plain text starts here, ${goto} uses the
                      # window origin, so every goto is shifted by this much
-BAROFF=60            # bar offset from the start of a cell (keeps columns aligned)
-VALOFF=30            # value offset from the start of a cell
-GAP=5                # gap after the last bar
+LABELW=3             # label field width ("C1 " / "C12"), keeps values in a column
+VALW=30              # value field width in px ("100%" ~29px), right-aligned
+BAROFF=52            # bar offset from cell start (after label + value)
+BARW=16              # compact bar width
+GAP=10               # gap after the bar / between cells
 
 raw="${CONKY_CPU_LIST:-$(cat /sys/devices/system/cpu/online 2>/dev/null)}"
 [ -n "$raw" ] || raw="0"
@@ -51,10 +53,13 @@ done
 maxn=${#phys[@]}
 [ "${#smt[@]}" -gt "$maxn" ] && maxn=${#smt[@]}
 if [ "$maxn" -le 6 ]; then cols=2; else cols=3; fi
+# Cell pitch: distribute CONTENT across the columns exactly, so the *last*
+# bar's right edge lands on X0 + CONTENT (the same edge ${alignr} and the
+# full-width graphs use). Each cell packs "C1 3% |bar|" tightly; the leftover
+# space becomes the gap before the next cell.
 cellw=$(( CONTENT / cols ))
-w=$(( CONTENT - GAP - BAROFF - (cols - 1) * cellw ))
-[ "$w" -lt 8 ] && w=8
-total_w=$(( (cols - 1) * cellw + w ))
+# The last cell's bar start is shifted so bar_start + BARW == X0 + CONTENT.
+lastbaroff=$(( CONTENT - (cols - 1) * cellw - BARW ))
 
 # One grid line per row; cells are absolutely positioned with ${goto}.
 emit_grid() { # $1=colour number, $2=label prefix, rest=CPU list
@@ -69,23 +74,31 @@ emit_grid() { # $1=colour number, $2=label prefix, rest=CPU list
         else
             printf '${goto %d}' "$(( X0 + colidx * cellw ))"
         fi
-        # right-aligned value: pad to a fixed 4-char field (3 digits + %)
-        # so the % hugs the bar and the slack falls between label and value.
-        printf '${color%s}%s%d ${goto %d}${color3}' \
-            "$col" "$prefix" "$(( i + 1 ))" \
-            "$(( X0 + colidx * cellw + VALOFF ))"
+        # Compact cell: "C1 3% |bar|". The bar start differs per column (the
+        # last one is shifted right to keep the grid flush), so the value is
+        # placed via ${goto} just before its bar instead of right after the
+        # label -- otherwise the last column would show a gap before its bar.
+        printf '${color%s}%-*s' "$col" "$LABELW" "$prefix$(( i + 1 ))"
+        # Pick this column's bar offset, then right-align the value in a fixed
+        # 4-char field ending a couple of pixels before the bar.
+        if [ "$colidx" -eq "$(( cols - 1 ))" ]; then
+            boff=$lastbaroff
+        else
+            boff=$BAROFF
+        fi
+        printf '${goto %d}${color3}' "$(( X0 + colidx * cellw + boff - VALW ))"
         printf '${if_match ${cpu cpu%d} < 100} ${endif}${if_match ${cpu cpu%d} < 10} ${endif}${cpu cpu%d}%%' \
             "$c" "$c" "$c"
         printf '${goto %d}${color%s}${cpubar cpu%d 6,%d}' \
-            "$(( X0 + colidx * cellw + BAROFF ))" "$col" "$c" "$w"
+            "$(( X0 + colidx * cellw + boff ))" "$col" "$c" "$BARW"
         i=$(( i + 1 ))
     done
     printf '\n'
 }
 
-# TOTAL: label + bar ending on the right edge of the last grid column.
+# TOTAL: a full-width usage bar, aligned with the CPU/GPU graphs.
 printf '${voffset 9}${color2}TOTAL${goto %d}${color1}${cpubar 6,%d}\n' \
-    "$(( X0 + BAROFF ))" "$total_w"
+    "$(( X0 + BAROFF ))" "$(( CONTENT - BAROFF ))"
 
 if [ "${#smt[@]}" -gt 0 ]; then
     printf '${voffset 8}${font Fira Sans:Bold:size=8}${color7}PHYSICAL CORES\n'

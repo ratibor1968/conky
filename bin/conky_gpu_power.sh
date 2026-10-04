@@ -1,9 +1,13 @@
 #!/bin/bash
-# GPU power draw in watts (e.g. "21 W"). NVIDIA first, then AMD, else N/A.
+# GPU power draw in watts (e.g. "21 W"). Reads the shared GPU sampler, then
+# falls back to AMD, else N/A.
+set -u
+DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+
 if command -v nvidia-smi >/dev/null 2>&1; then
-    out=$(nvidia-smi --query-gpu=power.draw --format=csv,noheader,nounits 2>/dev/null | head -n1)
-    if [ -n "$out" ]; then
-        awk -v v="$out" 'BEGIN{printf "%.0f W\n", v}'
+    v=$("$DIR/conky_gpu_sample.sh" power)
+    if [ -n "$v" ] && [ "$v" != "N/A" ]; then
+        awk -v v="$v" 'BEGIN{printf "%.0f W\n", v}'
         exit 0
     fi
 fi
