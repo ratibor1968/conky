@@ -15,7 +15,7 @@
 
 set -u
 
-CACHE_MS=3000
+CACHE_MS=1000
 STATE="${XDG_RUNTIME_DIR:-/tmp}/conky_top_procs.cache"
 now_ms=$(date +%s%3N)
 
