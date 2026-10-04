@@ -60,6 +60,18 @@ panel detects the active interface at runtime, so nothing is rendered per
 login. Set `CONKY_IFACE` to override interface detection (it is exported to
 the panels).
 
+### Resource use
+
+The expensive probes (process/GPU table, CPU grid) are precomputed by a small
+long-lived **sampler** (`bin/conky_sampler.sh`) that writes state files every
+few seconds; the panels just read them. This avoids forking a shell per value
+on every refresh, and pairs with a brief on-disk cache for the GPU sample and
+the reverse-DNS/ASN lookups (each host is resolved once and reused).
+
+`conky_start.sh` starts the sampler automatically: as a `systemd --user`
+service (`conky-sampler.service`) when systemd is available, otherwise as a
+background process. Both panels use only a fraction of a percent of one core.
+
 ### Autostart
 
 Add `~/.conky/conky_start.sh` to your autostart entries (KDE: *System Settings →

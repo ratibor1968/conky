@@ -1,0 +1,12 @@
+[Unit]
+Description=Conky sampler (precomputes expensive panel values)
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.conky/bin/conky_sampler.sh
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

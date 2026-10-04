@@ -19,6 +19,19 @@ fi
 # Make sure helpers are executable (exfat / fresh copies may lack +x).
 chmod +x "$BIN"/*.sh 2>/dev/null
 
+# Keep the long-lived sampler running so conky only has to read its state files.
+# Prefer systemd --user when available; otherwise start it directly.
+if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+    if [ -f "$DIR/conky-sampler.service" ]; then
+        mkdir -p "$HOME/.config/systemd/user"
+        cp -f "$DIR/conky-sampler.service" "$HOME/.config/systemd/user/" 2>/dev/null
+        systemctl --user daemon-reload 2>/dev/null
+        systemctl --user start conky-sampler.service 2>/dev/null
+    fi
+elif ! pgrep -f "$BIN/conky_sampler.sh" >/dev/null 2>&1; then
+    setsid "$BIN/conky_sampler.sh" >/dev/null 2>&1 &
+fi
+
 # Optional interface override, consumed by bin/conky_net_iface.sh.
 export CONKY_IFACE="${CONKY_IFACE:-}"
 

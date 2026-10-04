@@ -9,8 +9,8 @@
 set -u
 
 LIMIT=20     # rows to display (conky has vertical room for this many)
-TTL=3600     # reuse a cached name for one hour
-BUDGET=4     # at most this many new lookups per run
+TTL=86400    # reuse a cached name for a day (reverse names rarely change)
+BUDGET=2     # at most this many new lookups per run (each may hit the network)
 DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 CACHE="${XDG_RUNTIME_DIR:-/tmp}/conky_net_dns.cache"
 NOW=$(date +%s)
