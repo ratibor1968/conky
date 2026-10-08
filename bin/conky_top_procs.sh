@@ -9,7 +9,9 @@
 #         hours. The value is a share of the WHOLE CPU (all cores pegged =
 #         100%, one pinned core on a 24-thread CPU = ~4.2%), the same unit as
 #         the panel's CPU reading -- so it can never exceed 100 and needs no
-#         display clamp.
+#         display clamp. The process name is colour-coded along a gray ->
+#         white -> cyan ramp over that share, in 0.5% steps, so intensity
+#         climbs visibly from idle to full load.
 #   MEM   current resident memory, summed across instances of the same name.
 #   CONN  established, non-loopback TCP connections owned by the process
 #         (from `ss`), so the connection view and the process view agree.
@@ -17,7 +19,7 @@
 #
 # The process scan runs on every call; the two comparatively expensive probes
 # (ss, pmon) are cached for a few seconds, and the rendered output for
-# CACHE_MS, so a 1 s panel cadence stays cheap even in sampler-dead fallback
+# CACHE_MS, so the panel cadence stays cheap even in sampler-dead fallback
 # mode.
 #
 # PID reuse is detected via the process start time: a PID whose start time
@@ -217,9 +219,18 @@ END {
         c = cpu[nm] / nproc
         if (c > 100) c = 100
         cpuf = sprintf("%.1f%%", c)
+        # Name colour: gray -> white (at half load) -> cyan, stepped in 0.5%
+        # increments of the CPU share and interpolated between the three
+        # stops. Values stay in the regular text colour.
+        q = int(c / 0.5) * 0.5
+        if (q > 100) q = 100
+        if (q < 0) q = 0
+        if (q <= 50) { t = q / 50;        r1 = 108; g1 = 112; b1 = 134; r2 = 205; g2 = 214; b2 = 244 }
+        else         { t = (q - 50) / 50; r1 = 205; g1 = 214; b1 = 244; r2 = 137; g2 = 220; b2 = 235 }
+        cc = sprintf("${color #%02X%02X%02X}", int(r1 + t * (r2 - r1) + 0.5), int(g1 + t * (g2 - g1) + 0.5), int(b1 + t * (b2 - b1) + 0.5))
         cn = (cconn[nm] > 0) ? sprintf("%d", cconn[nm]) : ""
         gcol = (nm in gset) ? "${color8}●${color3}  " : "   "
-        printf "${color2}%-*s${color3}${alignr}%6s %5s %4s %s${color}\n", namew, disp, cpuf, m, cn, gcol
+        printf "%s%-*s${color3}${alignr}%6s %5s %4s %s${color}\n", cc, namew, disp, cpuf, m, cn, gcol
     }
 }')
 

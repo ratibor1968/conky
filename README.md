@@ -41,7 +41,9 @@ desktop, styled with the Catppuccin Mocha palette.
   drops off immediately instead of coasting on its lifetime average. CPU is a
   share of total capacity (all cores pegged = 100%), i.e. it can never exceed
   100%. Each row also shows RSS, the process's established-connection count
-  (`CONN`) and a GPU marker.
+  (`CONN`) and a GPU marker. The process name is colour-coded by load along a
+  gray → white → cyan ramp (stepping every 0.5% of CPU share), so hot
+  processes stand out at a glance.
 
 ## Requirements
 
@@ -70,25 +72,25 @@ detection (both are exported to the panels).
 
 ### Refresh rate
 
-Both panels run at `update_interval = 1` (1 s). Conky itself accepts
-fractional intervals — 0.1 s was measured working — but 1 s is the practical
-floor: the `execi`/`execpi` intervals are whole seconds and the sampler ticks
-at 1 s, so a faster refresh would mostly re-render identical data for more
-CPU.
+Both panels run at `update_interval = 2` (2 s), with the sampler on the same
+tick. Conky accepts fractional intervals — 0.1 s was measured working — and
+1 s also runs fine, but 2 s is the default: the `execi`/`execpi` intervals
+are whole seconds, so a faster refresh mostly re-renders identical data for
+extra CPU.
 
 ### Resource use
 
 The expensive probes (process table, CPU grid) are precomputed by a small
 long-lived **sampler** (`bin/conky_sampler.sh`) that writes state files every
-second; the panels just read them. This avoids forking a shell per value on
-every refresh, and pairs with short on-disk caches for the GPU sample, the
+two seconds; the panels just read them. This avoids forking a shell per value
+on every refresh, and pairs with short on-disk caches for the GPU sample, the
 process list's connection/GPU columns and the reverse-DNS/ASN lookups (each
 host is resolved once and reused).
 
 `conky_start.sh` starts the sampler automatically: as a `systemd --user`
 service (`conky-sampler.service`) when systemd is available, otherwise as a
-background process. At the 1 s cadence the two panels plus the sampler use on
-the order of a quarter of one core (~1% of a 24-thread machine).
+background process. At the 2 s cadence the two panels plus the sampler use on
+the order of 15-20% of one core (≲1% of a 24-thread machine).
 
 ### Autostart
 
