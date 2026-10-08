@@ -96,8 +96,9 @@ emit_grid() { # $1=colour number, $2=label prefix, rest=CPU list
     printf '\n'
 }
 
-# TOTAL: a full-width usage bar, aligned with the CPU/GPU graphs.
-printf '${voffset 9}${color2}TOTAL${goto %d}${color1}${cpubar 6,%d}\n' \
+# TOTAL: a full-width usage bar, aligned with the CPU/GPU graphs. The bar is
+# accent blue normally and switches to warning/critical colour past 75/90%.
+printf '${voffset 9}${color2}TOTAL${goto %d}${if_match ${cpu} < 75}${color1}${else}${if_match ${cpu} < 90}${color4}${else}${color5}${endif}${endif}${cpubar 6,%d}\n' \
     "$(( X0 + BAROFF ))" "$(( CONTENT - BAROFF ))"
 
 if [ "${#smt[@]}" -gt 0 ]; then

@@ -11,13 +11,16 @@
 # reader can never see a truncated/half-written file (which made the sections
 # blink out for a frame).
 #
+# The tick defaults to 1 s to match the panels' update_interval; override with
+# CONKY_SAMPLE_INTERVAL if a slower cadence is wanted.
+#
 # Run it as a user service (see conky-sampler.service) or under the conky
 # start script. It exits cleanly on SIGTERM and removes its state files.
 set -u
 
 STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}"
 DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
-SAMPLE="${CONKY_SAMPLE_INTERVAL:-2}"
+SAMPLE="${CONKY_SAMPLE_INTERVAL:-1}"
 
 cleanup() {
     rm -f "$STATE_DIR"/conky_sampler_*.state "$STATE_DIR"/conky_sampler_*.tmp.*

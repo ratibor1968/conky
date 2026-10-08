@@ -22,8 +22,10 @@ desktop, styled with the Catppuccin Mocha palette.
   right-aligned so the `%` stays next to the bar.
 - GPU (NVIDIA or AMD) usage, temperature, power draw and a usage graph, plus
   VRAM usage.
-- Memory, swap, root filesystem and a top-process list aggregated by name,
-  with a GPU marker for processes currently holding the GPU.
+- Memory, swap and root filesystem usage, and disk I/O rates plus
+  auto-scaling read/write graphs for the device backing `/`.
+- Usage bars (CPU total, RAM, root, VRAM) are accent blue normally and switch
+  to amber/red past 75%/90%.
 
 **Network panel**
 - The **active interface is detected at runtime** (default-route device), so
@@ -34,6 +36,12 @@ desktop, styled with the Catppuccin Mocha palette.
   labelled with explicit per-second units (e.g. `12.3 MiB/s`).
 - Established-connection peers grouped by **reverse-DNS hostname** (cached and
   resolved with a short timeout, so the panel never blocks).
+- A top-process list aggregated by name and ranked by **instantaneous CPU%**:
+  the delta of `/proc` tick counters between refreshes, so an idle process
+  drops off immediately instead of coasting on its lifetime average. CPU is a
+  share of total capacity (all cores pegged = 100%), i.e. it can never exceed
+  100%. Each row also shows RSS, the process's established-connection count
+  (`CONN`) and a GPU marker.
 
 ## Requirements
 
@@ -57,20 +65,30 @@ sudo pacman -S conky lm_sensors otf-font-awesome ttf-fira-sans noto-fonts nvidia
 
 The script (re)starts both panels and is safe to run repeatedly. The network
 panel detects the active interface at runtime, so nothing is rendered per
-login. Set `CONKY_IFACE` to override interface detection (it is exported to
-the panels).
+login. Set `CONKY_IFACE` / `CONKY_DISK` to override interface / disk device
+detection (both are exported to the panels).
+
+### Refresh rate
+
+Both panels run at `update_interval = 1` (1 s). Conky itself accepts
+fractional intervals — 0.1 s was measured working — but 1 s is the practical
+floor: the `execi`/`execpi` intervals are whole seconds and the sampler ticks
+at 1 s, so a faster refresh would mostly re-render identical data for more
+CPU.
 
 ### Resource use
 
-The expensive probes (process/GPU table, CPU grid) are precomputed by a small
+The expensive probes (process table, CPU grid) are precomputed by a small
 long-lived **sampler** (`bin/conky_sampler.sh`) that writes state files every
-few seconds; the panels just read them. This avoids forking a shell per value
-on every refresh, and pairs with a brief on-disk cache for the GPU sample and
-the reverse-DNS/ASN lookups (each host is resolved once and reused).
+second; the panels just read them. This avoids forking a shell per value on
+every refresh, and pairs with short on-disk caches for the GPU sample, the
+process list's connection/GPU columns and the reverse-DNS/ASN lookups (each
+host is resolved once and reused).
 
 `conky_start.sh` starts the sampler automatically: as a `systemd --user`
 service (`conky-sampler.service`) when systemd is available, otherwise as a
-background process. Both panels use only a fraction of a percent of one core.
+background process. At the 1 s cadence the two panels plus the sampler use on
+the order of a quarter of one core (~1% of a 24-thread machine).
 
 ### Autostart
 
