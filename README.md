@@ -41,9 +41,9 @@ desktop, styled with the Catppuccin Mocha palette.
   drops off immediately instead of coasting on its lifetime average. CPU is a
   share of total capacity (all cores pegged = 100%), i.e. it can never exceed
   100%. Each row also shows RSS, the process's established-connection count
-  (`CONN`) and a GPU marker. The process name is colour-coded by load along a
-  gray → white → cyan ramp (stepping every 0.5% of CPU share), so hot
-  processes stand out at a glance.
+  (`CONN`) and a GPU marker. The process name is colour-coded by load — white
+  at idle, cyan at one core, purple at two, bright purplish pink from three
+  cores up — with one colour step per whole percent of CPU share.
 
 ## Requirements
 

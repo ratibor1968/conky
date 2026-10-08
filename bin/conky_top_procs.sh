@@ -9,9 +9,10 @@
 #         hours. The value is a share of the WHOLE CPU (all cores pegged =
 #         100%, one pinned core on a 24-thread CPU = ~4.2%), the same unit as
 #         the panel's CPU reading -- so it can never exceed 100 and needs no
-#         display clamp. The process name is colour-coded along a gray ->
-#         white -> cyan ramp over that share, in 0.5% steps, so intensity
-#         climbs visibly from idle to full load.
+#         display clamp. The process name is colour-coded along a white ->
+#         cyan -> purple -> bright purplish pink ramp, one colour step per
+#         whole percent of CPU share: white at idle, cyan at one core (4%),
+#         purple at two, bright purplish pink from three cores up.
 #   MEM   current resident memory, summed across instances of the same name.
 #   CONN  established, non-loopback TCP connections owned by the process
 #         (from `ss`), so the connection view and the process view agree.
@@ -219,14 +220,17 @@ END {
         c = cpu[nm] / nproc
         if (c > 100) c = 100
         cpuf = sprintf("%.1f%%", c)
-        # Name colour: gray -> white (at half load) -> cyan, stepped in 0.5%
-        # increments of the CPU share and interpolated between the three
-        # stops. Values stay in the regular text colour.
-        q = int(c / 0.5) * 0.5
-        if (q > 100) q = 100
+        # Name colour, stepped on the displayed whole percent (so the colour
+        # changes exactly when the number crosses a whole %): white below one
+        # core, max cyan at 4% (one core), then purple (8%, two cores) and
+        # bright purplish pink (12%, three cores) with the last segment
+        # clamped for anything above.
+        q = int(sprintf("%.1f", c) + 0)
+        if (q > 12) q = 12
         if (q < 0) q = 0
-        if (q <= 50) { t = q / 50;        r1 = 108; g1 = 112; b1 = 134; r2 = 205; g2 = 214; b2 = 244 }
-        else         { t = (q - 50) / 50; r1 = 205; g1 = 214; b1 = 244; r2 = 137; g2 = 220; b2 = 235 }
+        if (q <= 4)      { t = q / 4;       r1 = 255; g1 = 255; b1 = 255; r2 = 137; g2 = 220; b2 = 235 }
+        else if (q <= 8) { t = (q - 4) / 4; r1 = 137; g1 = 220; b1 = 235; r2 = 203; g2 = 166; b2 = 247 }
+        else             { t = (q - 8) / 4; r1 = 203; g1 = 166; b1 = 247; r2 = 255; g2 = 124; b2 = 240 }
         cc = sprintf("${color #%02X%02X%02X}", int(r1 + t * (r2 - r1) + 0.5), int(g1 + t * (g2 - g1) + 0.5), int(b1 + t * (b2 - b1) + 0.5))
         cn = (cconn[nm] > 0) ? sprintf("%d", cconn[nm]) : ""
         gcol = (nm in gset) ? "${color8}●${color3}  " : "   "
