@@ -32,7 +32,7 @@ render() {
     gpu_names=$(timeout 3 nvidia-smi pmon -c 1 2>/dev/null |
         awk '!/^#/ && NF >= 10 && $10 != "" { print $10 }')
 
-    ps -eo comm=,pcpu=,rss= --sort=-pcpu 2>/dev/null | awk -v gpu="$gpu_names" '
+    ps -eo comm=,pcpu=,rss= --sort=-pcpu 2>/dev/null | awk -v gpu="$gpu_names" -v limit="${CONKY_TOP_N:-5}" '
     BEGIN {
         g = split(gpu, arr, "\n")
         for (i = 1; i <= g; i++) if (arr[i] != "") gset[arr[i]] = 1
@@ -40,6 +40,9 @@ render() {
     }
     {
         name = $1; cpu = $2; rss = $3
+        # The sampler's own `ps` invocation can briefly report a huge %CPU;
+        # it is an artefact, not a real workload.
+        if (name == "ps") next
         c[name] += cpu; m[name] += rss
         if (!(name in seen)) { seen[name] = 1; order[++nn] = name }
     }
@@ -49,7 +52,7 @@ render() {
                 if (c[order[j]] > c[order[i]]) { t = order[i]; order[i] = order[j]; order[j] = t }
 
         printf "${color7}%-*s${alignr}%6s %5s %-3s${color}\n", NAME, "NAME", "CPU%", "MEM", "GPU"
-        for (i = 1; i <= nn && i <= 8; i++) {
+        for (i = 1; i <= nn && i <= limit; i++) {
             nm = order[i]
             # Truncate for display only; look up metrics by the original key.
             disp = (length(nm) > NAME) ? substr(nm, 1, NAME - 3) "..." : nm

@@ -1,16 +1,27 @@
 #!/bin/bash
-# GPU temperature in degrees C (no unit). Reads the shared GPU sampler, then
-# falls back to AMD/sensors, else N/A.
+# GPU temperature in degrees C (number only, e.g. "42.0"). Reads the shared
+# GPU sampler, then tries the amdgpu hwmon sensor directly, then `sensors`.
+# The caller adds the "°C" suffix, so never print it here.
 set -u
 DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 
-if command -v nvidia-smi >/dev/null 2>&1; then
-    v=$("$DIR/conky_gpu_sample.sh" temp)
-    [ -n "$v" ] && [ "$v" != "N/A" ] && { echo "$v"; exit 0; }
+v=$("$DIR/conky_gpu_sample.sh" temp)
+if [ -n "$v" ] && [ "$v" != "N/A" ]; then
+    echo "$v"
+    exit 0
 fi
 
+# AMD amdgpu exposes temp1_input in millidegrees.
+for h in /sys/class/hwmon/hwmon*; do
+    [ "$(cat "$h/name" 2>/dev/null)" = "amdgpu" ] || continue
+    if [ -r "$h/temp1_input" ]; then
+        awk -v v="$(cat "$h/temp1_input")" 'BEGIN{printf "%.1f\n", v/1000}'
+        exit 0
+    fi
+done
+
+# Last resort: `sensors`, stripping the sign and unit.
 if command -v sensors >/dev/null 2>&1; then
-    # AMD amdgpu exposes "edge" / "junction"; NVIDIA hwmon exposes "temp1"
     val=$(sensors 2>/dev/null | awk '
         /amdgpu/      {in_gpu=1}
         in_gpu && /edge:/     {print $2; exit}
@@ -18,7 +29,10 @@ if command -v sensors >/dev/null 2>&1; then
         /temp1:/      {print $2; exit}
     ')
     if [ -n "$val" ]; then
-        printf '%s\n' "${val#+}"
+        val=${val#+}
+        val=${val%°C}
+        val=${val%C}
+        printf '%s\n' "$val"
         exit 0
     fi
 fi

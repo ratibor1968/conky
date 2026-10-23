@@ -1,0 +1,10 @@
+# Allow the Conky CPU-power helper to read the RAPL package energy counter as
+# a normal user. Mint/Ubuntu ship energy_uj as root-only (0400) because RAPL
+# can be used as a side channel; this makes it readable (0444) on this
+# personal machine so conky_cpu_power.sh can show package watts.
+#
+# Install:
+#   sudo install -Dm644 udev/99-rapl-readable.rules /etc/udev/rules.d/99-rapl-readable.rules
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger --subsystem-match=powercap
+SUBSYSTEM=="powercap", KERNEL=="intel-rapl:*", ACTION=="add|change", RUN+="/usr/bin/chmod 0444 /sys/class/powercap/%k/energy_uj"

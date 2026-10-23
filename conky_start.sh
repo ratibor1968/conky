@@ -12,12 +12,19 @@ BIN="$DIR/bin"
 RUN="$DIR/run"
 
 if ! command -v conky >/dev/null 2>&1; then
-    echo "conky is not installed. Run: sudo pacman -S conky otf-font-awesome" >&2
+    echo "conky is not installed. Install it with your package manager (Mint/Debian: sudo apt install conky-all; Arch: sudo pacman -S conky)." >&2
     exit 1
 fi
 
 # Make sure helpers are executable (exfat / fresh copies may lack +x).
 chmod +x "$BIN"/*.sh 2>/dev/null
+
+# The panels use Fira Sans and Font Awesome 7; warn instead of rendering tofu.
+for font in 'Fira Sans' 'Font Awesome 7 Free'; do
+    if ! fc-match "$font" 2>/dev/null | grep -qF "$font"; then
+        echo "Missing font: $font. Run: $BIN/install_fonts.sh" >&2
+    fi
+done
 
 # Keep the long-lived sampler running so conky only has to read its state files.
 # Prefer systemd --user when available; otherwise start it directly.

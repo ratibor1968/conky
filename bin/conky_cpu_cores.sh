@@ -22,17 +22,31 @@ raw="${CONKY_CPU_LIST:-$(cat /sys/devices/system/cpu/online 2>/dev/null)}"
 [ -n "$raw" ] || raw="0"
 
 # Expand a CPU list like "0-5,8,10-12" to one index per line (ascending).
-mapfile -t all < <(awk -v l="$raw" 'BEGIN{
-    n = split(l, p, ",")
-    for (i = 1; i <= n; i++) {
-        if (p[i] ~ /-/) { split(p[i], r, "-"); for (j = r[1]+0; j <= r[2]+0; j++) print j }
-        else if (p[i] != "") print p[i]+0
-    }
-}')
+expand_list() {
+    awk -v l="$1" 'BEGIN{
+        n = split(l, p, ",")
+        for (i = 1; i <= n; i++) {
+            if (p[i] ~ /-/) { split(p[i], r, "-"); for (j = r[1]+0; j <= r[2]+0; j++) print j }
+            else if (p[i] != "") print p[i]+0
+        }
+    }'
+}
+
+mapfile -t all < <(expand_list "$raw")
 [ "${#all[@]}" -gt 0 ] || exit 0
 
 declare -A online=()
 for c in "${all[@]}"; do online[$c]=1; done
+
+# conky numbers CPUs 1..N in the order they appear in /proc/stat; cpu0 is the
+# aggregate. Map each sysfs CPU number to that 1-based index so offline CPUs
+# (e.g. X3D mode) do not shift the grid.
+declare -A cpu_index=()
+n=0
+for c in "${all[@]}"; do
+    n=$((n + 1))
+    cpu_index[$c]=$n
+done
 
 # Split into physical cores (lowest online sibling) and SMT threads.
 phys=(); smt=()
@@ -40,7 +54,8 @@ for c in "${all[@]}"; do
     sib=$(cat "/sys/devices/system/cpu/cpu$c/topology/thread_siblings_list" 2>/dev/null)
     [ -n "$sib" ] || sib="$c"
     m=""
-    IFS=',' read -ra parts <<< "$sib"
+    # sysfs may use ranges ("0-1") as well as comma lists ("0,12").
+    mapfile -t parts < <(expand_list "$sib")
     for s in "${parts[@]}"; do
         [ -n "${online[$s]:-}" ] || continue
         if [ -z "$m" ] || [ "$s" -lt "$m" ]; then m="$s"; fi
@@ -64,10 +79,11 @@ lastbaroff=$(( CONTENT - (cols - 1) * cellw - BARW ))
 # One grid line per row; cells are absolutely positioned with ${goto}.
 emit_grid() { # $1=colour number, $2=label prefix, rest=CPU list
     local col="$1" prefix="$2"; shift 2
-    local arr=("$@") n=${#arr[@]} i=0 c colidx
+    local arr=("$@") n=${#arr[@]} i=0 c colidx cid
     [ "$n" -gt 0 ] || return 0
     for c in "${arr[@]}"; do
         colidx=$(( i % cols ))
+        cid="${cpu_index[$c]}"
         if [ "$colidx" -eq 0 ]; then
             [ "$i" -gt 0 ] && printf '\n'
             printf '${font Noto Sans Mono:size=9}'
@@ -88,9 +104,9 @@ emit_grid() { # $1=colour number, $2=label prefix, rest=CPU list
         fi
         printf '${goto %d}${color3}' "$(( X0 + colidx * cellw + boff - VALW ))"
         printf '${if_match ${cpu cpu%d} < 100} ${endif}${if_match ${cpu cpu%d} < 10} ${endif}${cpu cpu%d}%%' \
-            "$c" "$c" "$c"
+            "$cid" "$cid" "$cid"
         printf '${goto %d}${color%s}${cpubar cpu%d 6,%d}' \
-            "$(( X0 + colidx * cellw + boff ))" "$col" "$c" "$BARW"
+            "$(( X0 + colidx * cellw + boff ))" "$col" "$cid" "$BARW"
         i=$(( i + 1 ))
     done
     printf '\n'
