@@ -35,6 +35,10 @@ fi
 # Optional interface override, consumed by bin/conky_net_iface.sh.
 export CONKY_IFACE="${CONKY_IFACE:-}"
 
+# Optional disk override, consumed by bin/conky_disk_rate.sh (default: the
+# device backing /).
+export CONKY_DISK="${CONKY_DISK:-}"
+
 # Serialize concurrent invocations (e.g. autostart racing session restore) so
 # two runs can't each spawn a pair of panels.
 mkdir -p "$RUN"

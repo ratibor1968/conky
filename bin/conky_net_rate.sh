@@ -43,6 +43,7 @@ cur=$(cat "$COUNTER" 2>/dev/null) || cur=0
 STATE="${XDG_RUNTIME_DIR:-/tmp}/conky_net_${MODE}_${FORMAT}.state"
 now=$(date +%s%N)
 rate=0
+dt=0
 pmax=0
 if [ -r "$STATE" ]; then
     read -r prev_iface prev pt pmax <"$STATE" 2>/dev/null || true
@@ -58,13 +59,15 @@ fi
 
 max=0
 if [ "$FORMAT" = graph ]; then
-    # Recent-maximum tracker: jump up instantly, decay ~3%/sample on the way
-    # down, with a floor so a quiet link cannot amplify noise into a full bar.
+    # Recent-maximum tracker: jump up instantly, decay 3% per 3 s on the way
+    # down (time-based, so the trace looks the same at any refresh cadence),
+    # with a floor so a quiet link cannot amplify noise into a full bar.
     max=${pmax:-0}
     if [ "$rate" -gt "$max" ]; then
         max=$rate
-    else
-        max=$(( max * 97 / 100 ))
+    elif [ "$dt" -gt 0 ]; then
+        max=$(awk -v m="$max" -v dt="$dt" \
+            'BEGIN { m *= exp(log(0.97) * dt / 3000); if (m < 0) m = 0; printf "%.0f", m }')
     fi
     [ "$max" -lt 1024 ] && max=1024
 fi

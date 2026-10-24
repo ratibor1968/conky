@@ -11,6 +11,9 @@
 # reader can never see a truncated/half-written file (which made the sections
 # blink out for a frame).
 #
+# The tick defaults to 2 s to match the panels' update_interval; override with
+# CONKY_SAMPLE_INTERVAL if a different cadence is wanted.
+#
 # Run it as a user service (see conky-sampler.service) or under the conky
 # start script. It exits cleanly on SIGTERM and removes its state files.
 set -u
