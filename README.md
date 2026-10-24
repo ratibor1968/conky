@@ -35,7 +35,12 @@ desktop, styled with the Catppuccin Mocha palette.
 - Live up/down graphs and transfer totals for the active link. Speeds are
   labelled with explicit per-second units (e.g. `12.3 MiB/s`).
 - Established-connection peers grouped by **reverse-DNS hostname** (cached and
-  resolved with a short timeout, so the panel never blocks).
+  resolved with a short timeout, so the panel never blocks). Internet peers
+  collapse to their registrable domain, one row per provider. Peers on a private
+  network are never collapsed: the router names every DHCP client under its own
+  domain (`bitaxe1.fritz.box`), so collapsing would draw several devices as one
+  `fritz.box` row that reads like traffic to the gateway. Those rows keep the
+  device name plus its address (`bitaxe1@192.168.178.62`) and are drawn in teal.
 - A top-process list aggregated by name and ranked by **instantaneous CPU%**:
   the delta of `/proc` tick counters between refreshes, so an idle process
   drops off immediately instead of coasting on its lifetime average. CPU is a
@@ -103,6 +108,14 @@ Autostart*).
 > Session → Desktop Session → Applications to be excluded from session
 > restoration* add `conky` (equivalently: `excludeApps=conky,ConkySystem,ConkyNet`
 > under `[General]` in `~/.config/ksmserverrc`).
+
+### Triaging a connection
+
+The panel groups connections, so it hides ports, addresses and processes. When a
+CONNECTIONS row needs explaining, `bin/conky_net_peers_detail.sh` prints one row
+per established socket: address, remote port, resolved name and the owning local
+process. `bin/conky_net_peers.sh --self-test` re-checks the host-labelling rules
+after any edit to that script.
 
 ## Layout
 
